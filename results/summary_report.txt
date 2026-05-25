@@ -1,0 +1,44 @@
+======================================================================
+COOPETITIVE ENSEMBLE FRAMEWORK v10 — RESULTS SUMMARY
+======================================================================
+
+### EXPERIMENT 1: CONSTRUCT VALIDITY ###
+Test A (Redundancy): PASS
+Test A (Homogeneous pool): 10/10 negative
+Test B (SII agreement): PASS (SII corr r=0.9636, threshold >0.70)
+Test B — Q-stat corr: r=-0.8545
+Test B — Disagreement corr: r=0.8146
+Test C (Monotonicity): PASS (r=-0.9909)
+Test D (Neg Control): INCONCLUSIVE (max |m|=0.500000)
+
+### EXPERIMENT 2: ABLATION STUDY ###
+  Coopetitive-0.5          : AUC = 0.8977
+  Coopetitive-CV           : AUC = 0.8974
+  Shapley                  : AUC = 0.8968
+  Perf-Weighted            : AUC = 0.8958
+  Individual-Only          : AUC = 0.8958
+  Equal                    : AUC = 0.8938
+  Best-Single              : AUC = 0.8901
+  Shapley+SII              : AUC = 0.8879
+  Stacking                 : AUC = 0.8852
+  Interaction-Only         : AUC = 0.8707
+
+### EXPERIMENT 3: BENCHMARK ###
+Friedman chi2=10.0992, p=0.072473
+  Shapley                  : Rank = 2.80
+  Coopetitive-CV           : Rank = 2.87
+  Perf-Weighted            : Rank = 3.23
+  Stacking                 : Rank = 3.50
+  Best-Single              : Rank = 4.20
+  Equal                    : Rank = 4.40
+
+### EXPERIMENT 4: λ SENSITIVITY ###
+Optimal λ: 0.67 ± 0.45
+λ=0.5 ≥95% gain: 13% of datasets
+Robustness ratio (mean): 0.08
+
+### HYPOTHESIS VALIDATION ###
+H1: p=0.1479, r=0.2936, diff=0.001824
+H2: MIXED (see individual test results)
+H3: Friedman p=0.072473
+H4: 13% at ≥95%, robustness=0.08
