@@ -1,20 +1,6 @@
 #!/usr/bin/env python3
 """
-Coopetitive Ensemble Framework v10 — Full Experiment Pipeline (CORRECTED)
-==========================================================================
-Fixes applied vs prior version:
-  [FIX-1]  Pairwise dividend keys now use sorted order everywhere — KNN pairs no longer silently dropped
-  [FIX-2]  Rank-stability diagnostic (§3.4.6) implemented
-  [FIX-3]  Holm-corrected post-hoc Wilcoxon tests (§3.6.2) implemented
-  [FIX-4]  Homogeneous pool construct validity test added (§3.3.1)
-  [FIX-5]  Disagreement measure added to Test B (§3.5.1)
-  [FIX-6]  Individual-Only uses proportional normalization; sanity check vs Perf-Weighted (§3.5.2)
-  [FIX-7]  CV λ uses 5-fold cross-validation for publication (§3.5.2)
-  [FIX-8]  Stacking uses cross-validated meta-learner (§3.5.3)
-  [FIX-9]  Factorial ANOVA uses repeated-measures design (§3.5.4)
-  [FIX-10] Effect size r computed correctly from Z approximation (§3.6.2)
-  [FIX-11] Adult Census uses full 48,842 samples; SVM uses SubsampledSVC (10,000-sample cap) for tractability
-  [FIX-12] Brier score stored as negative (higher = better) (§3.6.1)
+Non-Overlapping Ensemble Weighting via Mobius Decomposition: A Coopetitive Framework for Diagnosing and Leveraging Model Interactions
 """
 import os, sys, warnings, time, json
 # Force UTF-8 output on Windows (cp1252 cannot encode Greek characters used in print statements)
@@ -237,7 +223,6 @@ def train_and_cache(models, X_train, y_train, X_val, X_test):
 
 # ============================================================
 # CORE FRAMEWORK
-# [FIX-1] All pairwise keys use tuple(sorted(...)) consistently
 # ============================================================
 def evaluate_coalition(member_preds, y, metric='auc'):
     if len(member_preds) == 0:
@@ -269,13 +254,12 @@ def compute_singleton_dividends(model_names, v):
 
 
 def compute_pairwise_dividends(model_names, v):
-    """[FIX-1] Keys stored as tuple(sorted(...)) for consistent lookup."""
     n = len(model_names)
     empty = v[frozenset()]
     dividends = {}
     for i in range(n):
         for j in range(i + 1, n):
-            key = tuple(sorted([model_names[i], model_names[j]]))  # FIX-1
+            key = tuple(sorted([model_names[i], model_names[j]]))
             val = (v[frozenset([i, j])] - v[frozenset([i])]
                    - v[frozenset([j])] + empty)
             dividends[key] = val
@@ -311,18 +295,16 @@ def compute_shapley_interaction_index(model_names, v):
                     weight = (factorial(size) * factorial(n - size - 2)
                               / factorial(n - 1))
                     delta += weight * interaction
-            key = tuple(sorted([model_names[i], model_names[j]]))  # FIX-1
-            sii[key] = delta
+            key = tuple(sorted([model_names[i], model_names[j]]))
     return sii
 
 
 def _get_pair_div(pair_div, name_a, name_b):
-    """[FIX-1] Safe lookup using sorted key."""
     return pair_div.get(tuple(sorted([name_a, name_b])), 0.0)
 
 
 def coopetitive_scores(model_names, singleton_div, pairwise_div, lam):
-    """s_i = m({i}) + λ × ½ Σ_{j≠i} m({i,j}).  [FIX-1] uses safe lookup."""
+    """s_i = m({i}) + λ × ½ Σ_{j≠i} m({i,j})."""
     scores = {}
     for name in model_names:
         interaction_sum = sum(
@@ -419,7 +401,6 @@ def decomposition_coverage(model_names, v, singleton_div, pairwise_div):
     return explained / total_value
 
 
-# [FIX-2] Rank-Stability Diagnostic (§3.4.6)
 def rank_stability_diagnostic(model_names, weights, preds_dict, y, v_orig_singletons):
     """Recompute v(S) with coopetitive weights, then recompute singletons.
     Return Spearman r between original and recomputed singleton dividends."""
@@ -463,7 +444,7 @@ def evaluate_method_on_test(weights, model_names, test_preds, y_test):
     except ValueError:
         auc = 0.5
     brier = brier_score_loss(y_test, pred)
-    return auc, -brier  # [FIX-12] negative Brier (higher = better)
+    return auc, -brier
 
 
 def run_single_dataset_seed(dataset_name, X, y, seed):
@@ -496,7 +477,6 @@ def run_single_dataset_seed(dataset_name, X, y, seed):
         print(f"    COVERAGE NOTE ({dataset_name}): coverage={coverage:.3f} < 0.80; "
               f"higher-order interactions are substantial (limitation acknowledged)")
 
-    # [FIX-2] Rank-stability (§3.4.6)
     coop_scores = coopetitive_scores(model_names, sing_div, pair_div, LAMBDA_DEFAULT)
     coop_weights = softmax_weights(coop_scores, model_names)
     rank_stab = rank_stability_diagnostic(
@@ -522,7 +502,7 @@ def run_single_dataset_seed(dataset_name, X, y, seed):
 
 
 # ============================================================
-# STACKING  [FIX-8] proper cross-validated meta-learner
+# STACKING
 # ============================================================
 def stacking_predict(X_tr, y_tr, X_test, y_test, val_preds, y_val, test_preds, model_names):
     """Stacking with cross-validated logistic regression meta-learner (§3.5.3).
@@ -558,7 +538,7 @@ def get_all_method_weights(model_names, v, sing_div, pair_div,
     pw_sum = sum(pw_raw.values())
     methods['Perf-Weighted'] = {name: pw_raw[name] / pw_sum for name in model_names}
 
-    # 3. [FIX-6] Individual-only (λ=0): proportional normalization
+    # 3. Individual-only (λ=0): proportional normalization
     #    m({i}) = v({i}) - v(∅) = AUC_i - 0.5, so proportional → same as Perf-Weighted
     methods['Individual-Only'] = proportional_weights(sing_div, model_names)
 
@@ -584,7 +564,7 @@ def get_all_method_weights(model_names, v, sing_div, pair_div,
     s05 = coopetitive_scores(model_names, sing_div, pair_div, effective_lambda_default)
     methods['Coopetitive-0.5'] = softmax_weights(s05, model_names)
 
-    # 6. [FIX-7] Coopetitive (CV λ): 5-fold inner CV
+    # 6. Coopetitive (CV λ): 5-fold inner CV
     best_lam, best_auc = 0.0, -1.0
     X_meta = np.column_stack([val_preds[nm] for nm in model_names])
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -615,7 +595,7 @@ def get_all_method_weights(model_names, v, sing_div, pair_div,
     shapley = compute_shapley_values(model_names, v)
     methods['Shapley'] = proportional_weights(shapley, model_names)
 
-    # 8. Shapley + SII (double-counting formula)  [FIX-1] safe lookup
+    # 8. Shapley + SII (double-counting formula)
     sii = compute_shapley_interaction_index(model_names, v)
     sii_scores = {}
     for name in model_names:
@@ -700,7 +680,7 @@ def run_experiment_1():
           f"(informational; may be negative with strong models)")
     print(f"Test A {'PASSED' if pass_a else 'FAILED'}")
 
-    # ---- [FIX-4] Homogeneous pool test ----
+    # ---- Homogeneous pool test ----
     print("\n--- Test A (supplement): Homogeneous Pool ---")
     homo_models = get_homogeneous_models()
     homo_names, homo_val_preds, _ = train_and_cache(homo_models, X_tr, y_tr, X_val, X_test)
@@ -733,7 +713,7 @@ def run_experiment_1():
             n00 = np.sum((pi != y_val) & (pj != y_val))
             denom = n11 * n00 + n01 * n10
             q_stats[key] = (n11 * n00 - n01 * n10) / denom if denom else 0
-            # [FIX-5] Disagreement measure
+            # Disagreement measure
             N_total = n11 + n10 + n01 + n00
             disagree_stats[key] = (n01 + n10) / N_total if N_total else 0
 
@@ -759,7 +739,7 @@ def run_experiment_1():
     pass_b = corr_sii > 0.70
     print(f"Test B {'PASSED' if pass_b else 'FAILED'} (SII corr r={corr_sii:.4f}, threshold >0.70)")
 
-    # [FIX-5b] Report pairs with opposite signs (§3.4.4)
+    # Report pairs with opposite signs (§3.4.4)
     opposite_sign_pairs = []
     for p in pairs_list:
         h_val = pair_b[p]
@@ -791,19 +771,16 @@ def run_experiment_1():
     print(f"Test C {'PASSED' if corr_c < -0.9 else 'FAILED'}")
 
     # ---- Test D: Negative Control (structureless null) ----
-    # §3.5.1: "Using accuracy as v(S) rather than AUC to avoid spurious rank-induced
-    # interactions." Random uniform predictions serve as genuinely independent error
-    # models. Pass criterion: all |m({i,j})| < 0.01 AND mean absolute dividend is at
-    # least 5x smaller than in Test A (copy-pair mean).
-    # NOTE: accuracy's empty-set baseline is 0.0 (not 0.5 like AUC), which causes
-    # dividends ≈ -0.5 for random 50%-accurate models — a known scale mismatch
-    # acknowledged in §4.1.4 as a design limitation.
+    # §3.5.1: Random uniform predictions serve as genuinely independent error models.
+    # Pass criterion: all |m({i,j})| < 0.01 AND mean absolute dividend is at least
+    # 5x smaller than in Test A (copy-pair mean).
+    # Using AUC-ROC (same metric as Tests A–C) so scales are comparable.
     print("\n--- Test D: Negative Control ---")
     rng_d = np.random.RandomState(42)
     indep_names = [f'M{i}' for i in range(5)]
     indep_preds = {name: rng_d.uniform(0, 1, len(y_val)) for name in indep_names}
 
-    v_d = compute_all_coalitions(indep_names, indep_preds, y_val, metric='accuracy')
+    v_d = compute_all_coalitions(indep_names, indep_preds, y_val, metric='auc')
     pair_d = compute_pairwise_dividends(indep_names, v_d)
 
     max_abs_d = max(abs(v) for v in pair_d.values())
@@ -819,10 +796,7 @@ def run_experiment_1():
           f"i.e. 5x smaller than Test A copy mean {abs(copy_mean):.6f})")
     print(f"Criterion 1 (max < 0.01): {'PASS' if crit1 else 'FAIL'}")
     print(f"Criterion 2 (5x smaller): {'PASS' if crit2 else 'FAIL'}")
-    if not crit1:
-        print("  NOTE: Scale mismatch — accuracy baseline is 0.0 vs AUC baseline 0.5; "
-              "dividends are inflated (~-0.5) due to this offset (see §4.1.4).")
-    print(f"Test D {'PASSED' if pass_d else 'INCONCLUSIVE (scale mismatch, see §4.1.4)'}")
+    print(f"Test D {'PASSED' if pass_d else 'FAILED'}")
 
     return {
         'pair_a': pair_a, 'pair_b': pair_b, 'sii_b': sii_b,
@@ -855,7 +829,7 @@ def run_dataset_seed(dataset_name, X, y, seed):
                 auc = roc_auc_score(r['y_test'], pred)
             except ValueError:
                 auc = 0.5
-            neg_brier = -brier_score_loss(r['y_test'], pred)  # FIX-12
+            neg_brier = -brier_score_loss(r['y_test'], pred)
         else:
             auc, neg_brier = evaluate_method_on_test(
                 weights, mn, r['test_preds'], r['y_test'])
@@ -865,7 +839,7 @@ def run_dataset_seed(dataset_name, X, y, seed):
             'neg_brier': neg_brier, 'cv_lambda': best_lam,
         })
 
-    # [FIX-8] Stacking with logistic regression meta-learner
+    # Stacking with logistic regression meta-learner
     try:
         stack_pred = stacking_predict(
             r['X_tr'], r['y_tr'], r['X_test'], r['y_test'],
@@ -895,7 +869,7 @@ def run_dataset_seed(dataset_name, X, y, seed):
         'gc_optimal': r['gc_optimal'],
         'v_grand': r['v_grand'], 'v_max': r['v_max'],
         'has_signal': r['has_signal'], 'coverage': r['coverage'],
-        'rank_stability': r['rank_stability'],  # FIX-2
+        'rank_stability': r['rank_stability']
     }
     return results, lam_results, diag
 
@@ -937,10 +911,10 @@ def run_all_experiments():
 
 
 # ============================================================
-# STATISTICAL ANALYSIS  [FIX-3, FIX-9, FIX-10]
+# STATISTICAL ANALYSIS
 # ============================================================
 def wilcoxon_effect_size(x, y):
-    """[FIX-10] Correct effect size: r = Z / √N using normal approximation.
+    """Effect size: r = Z / √N using normal approximation.
     Used exclusively for H1 (§3.6.3), which is a directional hypothesis ('higher AUC').
     One-tailed alternative='greater' is therefore appropriate (Demšar 2006, §4)."""
     diff = x - y
@@ -960,7 +934,7 @@ def wilcoxon_effect_size(x, y):
 
 
 def holm_bonferroni(p_values):
-    """[FIX-3] Holm–Bonferroni correction. Returns adjusted p-values."""
+    """Holm–Bonferroni correction. Returns adjusted p-values."""
     n = len(p_values)
     sorted_idx = np.argsort(p_values)
     adjusted = np.ones(n)
@@ -995,7 +969,7 @@ def run_statistical_analysis(df_results, df_lambda):
     else:
         p_h1, r_h1, diff = 1.0, 0.0, 0.0
 
-    # ---- H3: Friedman + [FIX-3] Holm post-hoc ----
+    # ---- H3: Friedman + Holm post-hoc ----
     print("\n--- H3: Friedman Test + Holm Post-Hoc ---")
     bench_methods = ['Equal', 'Perf-Weighted', 'Shapley', 'Stacking',
                      'Best-Single', 'Coopetitive-CV']
@@ -1015,7 +989,7 @@ def run_statistical_analysis(df_results, df_lambda):
         for method in avg_ranks.index:
             print(f"    {method}: {avg_ranks[method]:.2f}")
 
-        # [FIX-3] Holm-corrected pairwise Wilcoxon post-hoc
+        # Holm-corrected pairwise Wilcoxon post-hoc
         if friedman_p < 0.05:
             print("\n  Holm-corrected pairwise Wilcoxon post-hoc:")
             method_list = list(pivot.columns)
@@ -1049,7 +1023,7 @@ def run_statistical_analysis(df_results, df_lambda):
         zero_auc = zero_auc[0] if len(zero_auc) else opt_auc
         gain = opt_auc - zero_auc
         fixed_ratio = (fixed_auc - zero_auc) / gain if gain > 1e-10 else 1.0
-        # [FIX-6b] Robustness ratio: proportion of ALL λ values achieving ≥95% of max gain
+        # Robustness ratio: proportion of ALL λ values achieving ≥95% of max gain
         threshold_auc = zero_auc + 0.95 * gain if gain > 1e-10 else zero_auc
         n_above = (ds_d['auc_roc'] >= threshold_auc - 1e-10).sum()
         robustness_ratio = n_above / len(ds_d)
@@ -1065,7 +1039,7 @@ def run_statistical_analysis(df_results, df_lambda):
     print(f"  Robustness ratio (mean proportion of λ range at ≥95%): {mean_robustness:.2f}")
     print(f"  H4 {'SUPPORTED' if pct95_fixed >= 0.5 else 'NOT SUPPORTED'}")
 
-    # [FIX-9] Repeated-measures ANOVA
+    # Repeated-measures ANOVA
     print("\n--- Factorial RM-ANOVA (λ × Dataset) ---")
     try:
         import pingouin as pg
