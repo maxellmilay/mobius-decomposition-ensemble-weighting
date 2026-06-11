@@ -15,6 +15,8 @@
 \usepackage{natbib}
 \usepackage{hyperref}
 \usepackage{booktabs}
+\usepackage{xcolor}
+\definecolor{upmaroon}{RGB}{128,0,0}
 \usepackage{caption}
 \usepackage{titlesec}
 \usepackage{tocloft}
@@ -53,7 +55,7 @@
     colorlinks=true,
     linkcolor=black,
     citecolor=black,
-    urlcolor=blue
+    urlcolor=black
 }
 
 % Load auto-generated numerical findings from main.py output.
@@ -74,104 +76,228 @@
 \singlespacing
 
 \vspace*{0.3cm}
-\includegraphics[width=0.45\textwidth]{logo}
+\includegraphics[width=0.50\textwidth]{logo}
 
-\vspace{0.9cm}
+\vspace{0.65cm}
 
-{\Large \textbf{Non-Overlapping Ensemble Weighting via M\"{o}bius Decomposition: A Coopetitive Framework for Diagnosing and Leveraging Model Interactions}}
+{\large \textbf{UNIVERSITY OF THE PHILIPPINES}}\\[4pt]
+{\normalsize \textbf{College of Science}}\\[4pt]
+{\normalsize \textbf{Department of Computer Science}}
 
-\vspace{0.5cm}
-\rule{0.75\textwidth}{0.4pt}
+\vspace{0.55cm}
 
-\vspace{0.9cm}
+{\normalsize \textbf{Bachelor of Science in Computer Science}}
 
-A Special Project Submitted to the
+\vspace{0.45cm}
 
-\vspace{0.2cm}
-Faculty of the Department of Computer Science,
+{\normalsize {Maxell G. Milay}}
 
-\vspace{0.2cm}
-University of the Philippines Cebu
+\vspace{0.4cm}
 
-\vspace{0.7cm}
+{\normalsize \textbf{{NON-OVERLAPPING ENSEMBLE WEIGHTING VIA M\"{O}BIUS DECOMPOSITION: A COOPETITIVE FRAMEWORK FOR DIAGNOSING AND LEVERAGING MODEL INTERACTIONS}}}
 
-In Partial Fulfillment
+\vspace{0.45cm}
 
-\vspace{0.2cm}
-of the Requirements for the Degree
+{\normalsize \textbf{SP Adviser:}}
 
-\vspace{0.2cm}
-Bachelor of Science in Computer Science
+\vspace{0.3cm}
 
-\vspace{0.6cm}
-\rule{0.75\textwidth}{0.4pt}
+{\normalsize \textbf{ASST. PROF. DHARYLL PRINCE M. ABELLANA}}\\[4pt]
+{\normalsize \textbf{Department of Computer Science}}\\[4pt]
+{\normalsize \textbf{University of the Philippines Cebu}}
 
-\vfill
+\vspace{0.45cm}
 
-{\large \textbf{MAXELL G. MILAY}}\\
-BS Computer Science
-
-\vspace{0.6cm}
-
-{\large \textbf{DHARRYL PRINCE ABELLANA}}\\
-Special Problem Adviser
-
-\vspace{0.6cm}
-
-{\large \textbf{June 2026}}
+{\normalsize Date of Submission}\\[4pt]
+{\normalsize {June 2026}}
 
 \end{center}
-\end{titlepage}
 
+\vspace{0.4cm}
 
-% ============================================================
-% PERMISSION PAGE
-% ============================================================
-\clearpage
-\thispagestyle{empty}
 \begin{center}
-\singlespacing
+Permission is given for the following people to have access to this SP:
+\end{center}
 
-\vspace*{0.3cm}
-\includegraphics[width=0.45\textwidth]{logo}
+\vspace{0.3cm}
 
-\vspace{0.6cm}
-
-{\large \textbf{UNIVERSITY OF THE PHILIPPINES CEBU}}\\
-{\large \textbf{College of Science}}\\
-{\large \textbf{Department of Computer Science}}
-
-\vspace{0.7cm}
-
-{\large \textbf{Non-Overlapping Ensemble Weighting via M\"{o}bius Decomposition: A Coopetitive Framework for Diagnosing and Leveraging Model Interactions}}
-
-\vspace{0.9cm}
-
-\textbf{Permission is given for the following people to have access to this thesis:}
-
-\vspace{0.5cm}
-
-\begin{tabular}{|p{8.2cm}|p{3cm}|}
+\begin{center}
+\begin{tabular}{|p{10.8cm}|p{1.2cm}|}
 \hline
-\textbf{Available to the general public} & \textbf{Yes} \\
+Available to the general public & \centering No\tabularnewline
 \hline
-\textbf{Available only after consultation with the author or thesis adviser} & \textbf{Yes} \\
+Available only after consultation with author/SP adviser & \centering No\tabularnewline
 \hline
-\textbf{Available to those bound by a confidentiality agreement} & \textbf{Yes} \\
+Available only to those bound by confidentiality agreement & \centering Yes\tabularnewline
 \hline
 \end{tabular}
-
-\vfill
-
-{\large \textbf{MAXELL G. MILAY}}\\
-Student
+\end{center}
 
 \vspace{0.8cm}
 
-{\large \textbf{DHARRYL PRINCE ABELLANA}}\\
-Special Problem Adviser
+\begin{center}
+Student's signature: \underline{\hspace{5cm}}\\[0.6cm]
+Signature of the SP Adviser: \underline{\hspace{4cm}}
+\end{center}
+
+\end{titlepage}
+
+% ============================================================
+% APPROVAL SHEET
+% ============================================================
+\clearpage
+\pagenumbering{roman}
+\setcounter{page}{2}
+\thispagestyle{plain}
+
+\begin{singlespace}
+
+\begin{center}
+{\large \textbf{APPROVAL SHEET}}
+\end{center}
+
+\vspace{0.8cm}
+
+\noindent The faculty of the University of the Philippines Cebu -- Department of Computer Science approves this Special Problem entitled:
+
+\vspace{0.6cm}
+
+\begin{center}
+Non-Overlapping Ensemble Weighting via M\"{o}bius Decomposition: A Coopetitive Framework for Diagnosing and Leveraging Model Interactions
+\end{center}
+
+\vspace{0.3cm}
+
+\begin{center}
+Special Problem By\\[0.4cm]
+\textbf{Maxell G. Milay}
+\end{center}
+
+\vspace{1.2cm}
+
+\begin{center}
+\rule{0.5\textwidth}{0.4pt}\\[4pt]
+\textbf{ASST. PROF. DHARYLL PRINCE M. ABELLANA}\\[2pt]
+SP Adviser
+\end{center}
+
+\vspace{0.8cm}
+
+\begin{center}
+\rule{0.5\textwidth}{0.4pt}\\[4pt]
+Date Signed
+\end{center}
+
+\vspace{1.2cm}
+
+\begin{center}
+\rule{0.5\textwidth}{0.4pt}\\[4pt]
+\textbf{ELI EDRIAN L. TAN}\\[2pt]
+Officer-in-Charge, Department of Computer Science
+\end{center}
+
+\vspace{0.8cm}
+
+\begin{center}
+\rule{0.5\textwidth}{0.4pt}\\[4pt]
+Date Signed
+\end{center}
+
+\vspace{1.2cm}
+
+\begin{center}
+\rule{0.5\textwidth}{0.4pt}\\[4pt]
+\textbf{DR. ALVIN G. ROXAS}\\[2pt]
+Dean\\[2pt]
+College of Science
+\end{center}
+
+\vspace{0.8cm}
+
+\begin{center}
+\rule{0.5\textwidth}{0.4pt}\\[4pt]
+Date Signed
+\end{center}
+
+\end{singlespace}
+
+\newpage
+
+% ============================================================
+% SUBMISSION PAGE
+% ============================================================
+\thispagestyle{empty}
+
+\begin{singlespace}
+\begin{center}
+
+\vspace*{2cm}
+
+{A Special Problem}\\[6pt]
+{Presented to the Faculty of the}\\[6pt]
+{Department of Computer Science}\\[6pt]
+{University of the Philippines Cebu}
+
+\vspace{2.5cm}
+
+\textbf{{Non-Overlapping Ensemble Weighting via M\"{o}bius Decomposition: A Coopetitive Framework for Diagnosing and Leveraging Model Interactions}}
+
+\vspace{2.5cm}
+
+{In Partial Fulfillment of the Requirements of}\\[6pt]
+{Bachelor of Science in Computer Science}
+
+\vspace{1.8cm}
+
+{Maxell G. Milay}
+
+\vspace{1.8cm}
+
+ASST. PROF. DHARYLL PRINCE M. ABELLANA\\[6pt]
+Adviser
+
+\vspace{1.8cm}
+
+{June 2026}
 
 \end{center}
+\end{singlespace}
+
+\newpage
+
+% ============================================================
+% ABSTRACT
+% ============================================================
+\begin{center}
+{\large \textbf{ABSTRACT}}
+\end{center}
+\vspace{0.5cm}
+
+When combining multiple machine learning models into an ensemble, one of the most persistent challenges is deciding how much weight to assign each model. The most principled existing approach, based on cooperative game theory, produces a single score per model that mixes together how well a model performs on its own and how well it works alongside others -- making it impossible to tell which source of value is actually driving the weight. Attempts to fix this by adding a separate interaction measure on top create a new problem: the interaction effects get counted twice, distorting the weights and degrading predictive accuracy. This study introduces a coopetitive ensemble weighting framework that resolves both problems using the M\"{o}bius decomposition, a mathematical technique that cleanly separates each model's individual contribution from its pairwise interaction effects with no overlap. A tunable parameter controls how much influence model interactions have on the final weights, and the framework produces a pairwise dividend matrix that maps, for every pair of models in the pool, whether they complement or duplicate each other.
+
+The framework was evaluated on fifteen real-world binary classification datasets using five diverse base models. The proposed approach achieved the highest discriminative accuracy and the best probability calibration among all tested configurations, and the double-counting variant performed measurably worse -- confirming that the theoretical concern has practical consequences. While the improvement over simpler baselines was modest and did not reach statistical significance in this study, the most important contribution is the pairwise dividend matrix as a diagnostic tool for improving predictive performance. A strongly negative matrix signals that the model pool is dominated by redundancy, pointing practitioners toward replacing or removing overlapping models as the most direct path to higher accuracy. By linking what the matrix reveals about model interactions to concrete corrective actions, this framework offers a level of interpretable, actionable guidance that no other ensemble weighting method currently provides.
+
+\newpage
+
+% ============================================================
+% ACKNOWLEDGEMENTS
+% ============================================================
+\begin{center}
+{\large \textbf{ACKNOWLEDGEMENTS}}
+\end{center}
+\vspace{0.5cm}
+
+The completion of this research was made possible through the collective support, guidance, and generosity of individuals and institutions whose contributions I wish to formally recognize.
+
+First, I give thanks to God, from whom all the capacity for inquiry, perseverance, and understanding ultimately derives.
+
+To my special problem adviser, Asst.\ Prof.\ Dharyll Prince M. Abellana, I extend my sincere gratitude for the guidance and direction you provided throughout this work. Though our meetings were few, your insights were precise and purposeful, each one enough to move the research forward in meaningful ways. It is a testament to the quality of your mentorship that this paper found its completion despite the limited time we had together.
+
+To my family, whose silent sacrifices have supported every academic endeavor I have pursued, I owe more than words can adequately convey. The foundation you built made this work possible.
+
+To my friends who stood by me through the most challenging phases of this research, offering both thoughtful engagement and personal encouragement when the demands of the work felt overwhelming, thank you for your presence and your patience.
+
+To the University of the Philippines Cebu, thank you for fostering an academic environment that values undergraduate research and gives students the space to pursue work that is both original and technically ambitious.
 
 \newpage
 
@@ -181,20 +307,20 @@ Special Problem Adviser
 \hypersetup{pageanchor=true}
 \pagenumbering{arabic}
 \tableofcontents
+
 \newpage
 
 % ============================================================
-% ABSTRACT
+% LIST OF FIGURES
 % ============================================================
+\listoffigures
+
 \newpage
-\begin{center}
-{\large \textbf{ABSTRACT}}
-\end{center}
-\vspace{0.5cm}
 
-Ensemble weighting methods based on the Shapley value entangle each model's standalone quality with its interaction effects, and attempts to correct this by augmenting Shapley values with the Shapley Interaction Index introduce systematic double-counting of pairwise effects already embedded within the Shapley value. This study proposes a coopetitive ensembling framework that resolves both problems by applying the M\"{o}bius decomposition (Harsanyi dividends) to construct ensemble weights from mathematically non-overlapping singleton and pairwise terms. Singleton dividends capture each model's pure standalone contribution; pairwise dividends capture the surplus or deficit from model interactions exclusively. A tunable parameter $\lambda$ balances individual model quality against interaction structure, and softmax normalization converts the resulting scores to valid probability weights.
-
-The framework was evaluated on fifteen binary classification benchmark datasets using a pool of five heterogeneous base models (Logistic Regression, Random Forest, SVM, XGBoost, and $k$-Nearest Neighbors) with five random seeds per dataset. The coopetitive variant ($\lambda = 0.5$) achieved the highest mean AUC-ROC of any ablation variant tested (0.8977) and the best probability calibration (negative Brier score $= -0.097$). The Shapley+SII variant, which introduces double-counting, degraded performance by 0.009 AUC relative to plain Shapley, providing evidence consistent with the double-counting hypothesis. The primary hypothesis that adding interaction information significantly improves over performance-weighted weighting (H1) was not statistically supported ($p = 0.148$); the coopetitive framework ranked second of six methods in the benchmark comparison ($p = 0.072$ by Friedman test). The most durable practical contribution is the pairwise dividend matrix, which provides an interpretable diagnostic of model complementarity and redundancy that no other ensemble weighting method produces.
+% ============================================================
+% LIST OF TABLES
+% ============================================================
+\listoftables
 
 \newpage
 
@@ -231,7 +357,7 @@ The second is the double-counting gap. If practitioners attempt to correct for i
 
 The third is the interpretability gap. Existing ensemble combination methods, including stacking and blending, optimize weights through cross-validated meta-learning. While individual model quality can often be assessed in isolation (for example, through standalone accuracy or the model's own Shapley value in the ensemble game), no standard ensemble method produces a pairwise diagnostic that reveals which specific model pairs are complementary, redundant, or independent within a given pool. Practitioners cannot determine from the ensemble weights alone how the interaction structure of the pool influenced the final combination, limiting the ability to diagnose ensemble behavior, guide model selection, and communicate results to stakeholders.
 
-The M\"{o}bius decomposition directly resolves all three gaps by construction---meaning the non-overlapping property is an algebraic identity that follows directly from the definition of the dividends, not an empirical claim---as established in \S\,2.3.
+The M\"{o}bius decomposition directly resolves all three gaps by construction -- meaning the non-overlapping property is an algebraic identity that follows directly from the definition of the dividends, not an empirical claim -- as established in \S\,2.3.
 
 \section{Research Objectives}
 
@@ -829,7 +955,9 @@ Construct validity was partially established: three of four controlled tests con
 
 \section{Conclusions}
 
-This study demonstrates that the M\"{o}bius decomposition can serve as a principled diagnostic instrument for ensemble design, providing interaction-level transparency that simpler combination methods do not offer. The pairwise dividend matrix and the coopetitive framework built around it extend the applicability of cooperative game theory within machine learning, establishing a formal connection between ensemble weighting, Harsanyi dividends, and interpretable model diagnostics. This contribution is relevant beyond the specific experimental setting: any practitioner who needs to understand why an ensemble weights its members as it does, or who wants to identify which models contribute through complementarity versus which overlap through redundancy, can apply the dividend matrix directly without committing to the full coopetitive weighting formula. For the field of ensemble learning, the framework's most durable value is this diagnostic transparency---a quality that performance-focused methods like stacking, no matter how accurate, do not share.
+The primary contribution of this study is the pairwise dividend matrix as a troubleshooting instrument for AUC -- a diagnostic layer between model selection and ensemble performance that no existing weighting method provides. The relationship between the matrix and AUC is direct and actionable. When all pairwise dividends are strongly negative, as observed across all fifteen datasets here, the pool is governed by redundancy: the ensemble cannot leverage complementarity to improve AUC, and no re-weighting of redundant models will recover the lost performance. In this regime, the matrix identifies the highest-leverage intervention -- replace or exclude the model pair with the most negative dividend -- rather than leaving the practitioner to adjust weights among equally overlapping models by trial and error. Conversely, when a pair carries a less negative or positive dividend, it is providing genuine complementarity; preserving or upweighting that pairing is the action most likely to push AUC upward.
+
+The matrix also provides a principled basis for setting $\lambda$, the parameter that mediates between the interaction structure and the final ensemble weights. Because the optimal $\lambda$ ranged from 0.0 (pools where redundancy is negligible and interaction penalization adds only noise) to 1.5 (pools where aggressive penalization of overlapping models is needed), dividend magnitude functions as a natural prior for this choice: a pool with dividends near zero warrants $\lambda \approx 0$, while one with dividends averaging $-0.3$ or below warrants higher $\lambda$. This connection closes the loop from diagnosis to action -- inspect the pairwise matrix, read the redundancy profile, set $\lambda$ accordingly, and observe the downstream AUC effect. For the field of ensemble learning, this constitutes a formal, interpretable bridge between pairwise model interaction structure and AUC optimization that performance-focused methods like stacking, regardless of their accuracy, do not share.
 
 \section{Limitations}
 
@@ -846,6 +974,10 @@ Three limitations proved most consequential in practice. First, the decompositio
 \section*{Data and Code Availability}
 
 The code and data used in this study are publicly available at \url{https://github.com/maxellmilay/mobius-decomposition-ensemble-weighting}.
+
+\section*{Declaration of Generative AI and AI-Assisted Technologies in the Manuscript Preparation Process}
+
+During the preparation of this work the author used Claude and Claude Code (Anthropic) in order to assist with code development, review sections of the paper for clarity and structure, and paraphrase selected passages. The author reviewed and edited all AI-assisted content as needed and takes full responsibility for the content of the submitted manuscript.
 
 % ============================================================
 % BIBLIOGRAPHY

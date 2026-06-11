@@ -1,0 +1,67 @@
+\contentsline {chapter}{\numberline {1}The Problem and Its Scope}{7}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Rationale}{7}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Statement of the Problem}{8}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Research Objectives}{10}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Significance of the Study}{11}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Scope and Delimitation}{12}{section.1.5}%
+\contentsline {section}{\numberline {1.6}Definition of Terms}{12}{section.1.6}%
+\contentsline {chapter}{\numberline {2}Review of Related Literature}{14}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Ensemble Methods and the Weighting Problem}{14}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Cooperative Game Theory in Machine Learning}{15}{section.2.2}%
+\contentsline {section}{\numberline {2.3}The M\"{o}bius Decomposition and Harsanyi Dividends}{16}{section.2.3}%
+\contentsline {section}{\numberline {2.4}The Shapley Interaction Index and Its Relationship to Harsanyi Dividends}{17}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Diversity Measures in Ensemble Learning}{18}{section.2.5}%
+\contentsline {section}{\numberline {2.6}Limitations and Gaps in Existing Approaches}{19}{section.2.6}%
+\contentsline {chapter}{\numberline {3}Methodology}{20}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Research Design}{20}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Formal Hypotheses}{20}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Phase 1: Base Model Pool and Dataset Curation}{22}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Base Model Pool}{22}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Dataset Selection}{23}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Data Splitting Protocol}{24}{subsection.3.3.3}%
+\contentsline {section}{\numberline {3.4}Phase 2: Characteristic Function Evaluation and M\"{o}bius Decomposition}{24}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Coalition Evaluation}{24}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Characteristic Function Diagnostics}{24}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}M\"{o}bius Dividend Computation}{25}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Context-Sensitivity Diagnostic}{25}{subsection.3.4.4}%
+\contentsline {subsection}{\numberline {3.4.5}Coopetitive Weight Derivation}{26}{subsection.3.4.5}%
+\contentsline {subsection}{\numberline {3.4.6}Rank-Stability Diagnostic}{26}{subsection.3.4.6}%
+\contentsline {section}{\numberline {3.5}Phase 3: Validation Experiments}{27}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Experiment 1: Construct Validity of Pairwise Dividends}{27}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Experiment 2: Ablation Study}{28}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Experiment 3: Benchmark Comparison}{29}{subsection.3.5.3}%
+\contentsline {subsection}{\numberline {3.5.4}Experiment 4: $\lambda $ Sensitivity Analysis and Factorial Interaction}{30}{subsection.3.5.4}%
+\contentsline {section}{\numberline {3.6}Phase 4: Evaluation and Statistical Analysis}{30}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Primary Evaluation Metrics}{30}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Statistical Treatment}{31}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Hypothesis Validation}{31}{subsection.3.6.3}%
+\contentsline {section}{\numberline {3.7}Software Requirements}{32}{section.3.7}%
+\contentsline {section}{\numberline {3.8}Limitations to Acknowledge}{32}{section.3.8}%
+\contentsline {chapter}{\numberline {4}Results}{34}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Diagnostic Checks}{34}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Decomposition Coverage}{34}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Monotonicity Violations and Grand Coalition Performance}{34}{subsection.4.1.2}%
+\contentsline {subsection}{\numberline {4.1.3}Rank Stability}{35}{subsection.4.1.3}%
+\contentsline {section}{\numberline {4.2}Experiment 1: Construct Validity of Pairwise Dividends}{35}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Test A: Detecting Artificial Redundancy}{36}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Test B: Agreement with Established Measures}{36}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Test C: Smooth Response to Increasing Similarity}{38}{subsection.4.2.3}%
+\contentsline {subsection}{\numberline {4.2.4}Test D: Negative Control with Independent Models}{38}{subsection.4.2.4}%
+\contentsline {subsection}{\numberline {4.2.5}Construct Validity Summary}{40}{subsection.4.2.5}%
+\contentsline {section}{\numberline {4.3}Experiment 2: Ablation Study}{40}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Experiment 3: Benchmark Comparison}{42}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Experiment 4: $\lambda $ Sensitivity Analysis and Factorial Interaction}{43}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Hypothesis Summary}{44}{section.4.6}%
+\contentsline {chapter}{\numberline {5}Discussion}{47}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Interpretable Diagnostics as the Primary Contribution}{47}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Role of the Interaction Term}{48}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Evidence Consistent with the Double-Counting Hypothesis}{48}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Why Stacking Underperformed}{49}{section.5.4}%
+\contentsline {section}{\numberline {5.5}The Decomposition Coverage Issue}{49}{section.5.5}%
+\contentsline {section}{\numberline {5.6}Why $\lambda $ Cannot Be Fixed}{50}{section.5.6}%
+\contentsline {section}{\numberline {5.7}Grand Coalition Is Not Always Best}{50}{section.5.7}%
+\contentsline {chapter}{\numberline {6}Conclusion}{51}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Summary of Findings}{51}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Conclusions}{52}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Limitations}{52}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Recommendations and Future Work}{53}{section.6.4}%
