@@ -2,7 +2,8 @@
 """
 Non-Overlapping Ensemble Weighting via Mobius Decomposition: A Coopetitive Framework for Diagnosing and Leveraging Model Interactions
 """
-import os, sys, warnings, time, json
+import argparse
+import sys, warnings, time
 # Force UTF-8 output on Windows (cp1252 cannot encode Greek characters used in print statements)
 if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
@@ -14,9 +15,8 @@ from itertools import combinations
 import numpy as np
 import pandas as pd
 from scipy import stats
-from scipy.stats import norm as sp_norm
 
-from sklearn.datasets import load_breast_cancer, make_classification, fetch_openml
+from sklearn.datasets import load_breast_cancer, fetch_openml
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder, LabelEncoder
@@ -38,13 +38,18 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION
 # ============================================================
 RESULTS_DIR = Path(__file__).parent / "results"
-FIGURES_DIR = Path(__file__).parent / "figures"
+USABLE_DATASETS_DIR = Path(__file__).parent / "results" / "usable_datasets"
 RESULTS_DIR.mkdir(exist_ok=True)
-FIGURES_DIR.mkdir(exist_ok=True)
+EXP_DIRS = {n: RESULTS_DIR / f'experiment_{n}' for n in range(1, 5)}
 
 N_SEEDS = 5
 LAMBDA_GRID = np.round(np.arange(0, 2.05, 0.1), 1)
 LAMBDA_DEFAULT = 0.5
+
+# Dataset used for Experiment 1 (construct validity) Tests A and B.
+# Must be 'Breast Cancer' or a dataset name present in the usable_datasets CSV.
+# Swap this constant to change the construct validity base dataset.
+CONSTRUCT_VALIDITY_DATASET = 'Breast Cancer'
 
 # ============================================================
 # DATASET LOADING
@@ -72,70 +77,34 @@ def _fetch_openml_dataset(data_id, name):
     return X, y
 
 
+def _latest_usable_csv() -> Path:
+    csvs = sorted(USABLE_DATASETS_DIR.glob('*.csv'))
+    if not csvs:
+        raise FileNotFoundError(
+            f"No usable-datasets CSV found in {USABLE_DATASETS_DIR}. "
+            "Run extract_usable_datasets.py first."
+        )
+    return csvs[-1]
+
+
 def get_datasets():
-    """Load all 15 benchmark datasets from OpenML; falls back to synthetic proxies."""
+    """Load all validated benchmark datasets from the usable_datasets CSV."""
+    csv_path = _latest_usable_csv()
+    df = pd.read_csv(csv_path, skipinitialspace=True)
+    df.columns = df.columns.str.strip()
+    df['name'] = df['name'].str.strip()
+    print(f"Loading {len(df)} validated datasets from {csv_path.name}...")
     datasets = {}
-    bc = load_breast_cancer()
-    datasets['Breast Cancer'] = (bc.data, bc.target, 'Medical', 569)
-
-    # OpenML data IDs for the 14 UCI benchmark datasets
-    openml_specs = [
-        ('Heart Disease',       53,    'Medical'),
-        ('Pima Diabetes',       37,    'Medical'),
-        ('Ionosphere',          59,    'Physics'),
-        ('German Credit',       31,    'Financial'),
-        ('Adult Census',       1590,   'Socioeconomic'),
-        ('Australian Credit',  40981,  'Financial'),
-        ('Sonar',               40,    'Signal'),
-        ('SPECT Heart',        336,    'Medical'),
-        ('Haberman Survival',   43,    'Medical'),
-        ('Banknote Auth',     1462,    'Forensic'),
-        ('Blood Transfusion',  1464,   'Medical'),
-        ('Tic-Tac-Toe',         50,    'Game'),
-        ('Climate Crashes',   40994,   'Climate'),
-        ('Phoneme',           1489,    'Signal'),
-    ]
-
-    # Synthetic fallbacks retain original sample sizes and class balance
-    synthetic_specs = {
-        'Heart Disease':       (303,  13, 0.46, 'Medical'),
-        'Pima Diabetes':       (768,   8, 0.35, 'Medical'),
-        'Ionosphere':          (351,  34, 0.36, 'Physics'),
-        'German Credit':      (1000,  20, 0.30, 'Financial'),
-        'Adult Census':       (48842, 14, 0.24, 'Socioeconomic'),
-        'Australian Credit':   (690,  14, 0.44, 'Financial'),
-        'Sonar':               (208,  60, 0.47, 'Signal'),
-        'SPECT Heart':         (267,  22, 0.21, 'Medical'),
-        'Haberman Survival':   (306,   3, 0.26, 'Medical'),
-        'Banknote Auth':      (1372,   4, 0.44, 'Forensic'),
-        'Blood Transfusion':   (748,   4, 0.24, 'Medical'),
-        'Tic-Tac-Toe':         (958,   9, 0.35, 'Game'),
-        'Climate Crashes':     (540,  18, 0.09, 'Climate'),
-        'Phoneme':            (5404,   5, 0.29, 'Signal'),
-    }
-
-    for name, data_id, domain in openml_specs:
+    for _, row in df.iterrows():
+        name = row['name']
+        openml_id = int(row['openml_id'])
         try:
-            X, y = _fetch_openml_dataset(data_id, name)
-            datasets[name] = (X, y, domain, len(X))
+            X, y = _fetch_openml_dataset(openml_id, name)
+            datasets[name] = (X, y, 'OpenML', len(X))
             print(f"  Loaded {name}: {len(X)} samples, {X.shape[1]} features "
-                  f"(OpenML {data_id})")
-        except Exception as e:
-            print(f"  OpenML {data_id} ({name}) unavailable: {e!r} — synthetic proxy")
-            n, p, pos_frac, dom = synthetic_specs[name]
-            # Synthetic fallback parameters below are not specified in the manuscript.
-            # They are heuristics chosen to approximate the real dataset's structure:
-            # 60% informative features, 20% redundant, 2 clusters/class, 3% label noise.
-            n_informative = max(2, int(p * 0.6))
-            n_redundant = max(0, min(int(p * 0.2), p - n_informative))
-            X, y = make_classification(
-                n_samples=n, n_features=p,
-                n_informative=n_informative,
-                n_redundant=n_redundant,
-                n_clusters_per_class=2,
-                weights=[1 - pos_frac, pos_frac],
-                flip_y=0.03, random_state=42)
-            datasets[name] = (X, y, dom, n)
+                  f"(OpenML {openml_id})")
+        except Exception as exc:
+            print(f"  SKIP {name} (OpenML {openml_id}): {exc}")
     return datasets
 
 
@@ -296,6 +265,7 @@ def compute_shapley_interaction_index(model_names, v):
                               / factorial(n - 1))
                     delta += weight * interaction
             key = tuple(sorted([model_names[i], model_names[j]]))
+            sii[key] = delta
     return sii
 
 
@@ -504,7 +474,7 @@ def run_single_dataset_seed(dataset_name, X, y, seed):
 # ============================================================
 # STACKING
 # ============================================================
-def stacking_predict(X_tr, y_tr, X_test, y_test, val_preds, y_val, test_preds, model_names):
+def stacking_predict(val_preds, y_val, test_preds, model_names):
     """Stacking with cross-validated logistic regression meta-learner (§3.5.3).
     Base model predictions on the validation set serve as out-of-fold features
     (base models were trained only on the training set, so these are held-out).
@@ -618,21 +588,38 @@ def get_all_method_weights(model_names, v, sing_div, pair_div,
 # ============================================================
 # EXPERIMENT 1: CONSTRUCT VALIDITY
 # ============================================================
+def load_construct_validity_data():
+    """Load and split the dataset specified by CONSTRUCT_VALIDITY_DATASET."""
+    if CONSTRUCT_VALIDITY_DATASET == 'Breast Cancer':
+        bc = load_breast_cancer()
+        X, y = bc.data, bc.target
+    else:
+        csv_path = _latest_usable_csv()
+        df = pd.read_csv(csv_path, skipinitialspace=True)
+        df.columns = df.columns.str.strip()
+        df['name'] = df['name'].str.strip()
+        row = df[df['name'] == CONSTRUCT_VALIDITY_DATASET]
+        if row.empty:
+            raise ValueError(
+                f"Unknown CONSTRUCT_VALIDITY_DATASET: {CONSTRUCT_VALIDITY_DATASET!r}. "
+                "Must be 'Breast Cancer' or a dataset name present in the usable_datasets CSV."
+            )
+        data_id = int(row.iloc[0]['openml_id'])
+        X, y = _fetch_openml_dataset(data_id, CONSTRUCT_VALIDITY_DATASET)
+    print(f"  Construct validity data: {CONSTRUCT_VALIDITY_DATASET} "
+          f"({len(X)} samples, {X.shape[1]} features)")
+    return split_data(X, y, seed=42)
+
+
 def run_experiment_1():
     print("\n" + "=" * 60)
     print("EXPERIMENT 1: Construct Validity of Pairwise Dividends")
     print("=" * 60)
 
-    # Synthetic dataset for construct validity. Parameters not stated in the manuscript;
-    # chosen to create a moderately difficult problem:
-    #   n_samples=800: gives ~160 validation samples, sufficient for stable AUC estimates.
-    #   n_features=20, n_informative=10, n_redundant=5: standard moderate-difficulty setup.
-    #   n_clusters_per_class=3: non-linear structure that rewards diverse inductive biases.
-    #   flip_y=0.08: 8% label noise prevents ceiling effects (all models at AUC≈1).
-    X_cv, y_cv = make_classification(
-        n_samples=800, n_features=20, n_informative=10, n_redundant=5,
-        n_clusters_per_class=3, flip_y=0.08, random_state=42)
-    X_tr, X_val, X_test, y_tr, y_val, y_test = split_data(X_cv, y_cv, seed=42)
+    # Tests A and B use a real benchmark dataset so construct validity is demonstrated
+    # on genuine data distributions. Tests C and D use constructed predictions
+    # (controlled blends and random outputs) where synthetic signal is the test itself.
+    X_tr, X_val, X_test, y_tr, y_val, y_test = load_construct_validity_data()
 
     # ---- Test A: Controlled Redundancy ----
     print("\n--- Test A: Controlled Redundancy ---")
@@ -798,6 +785,16 @@ def run_experiment_1():
     print(f"Criterion 2 (5x smaller): {'PASS' if crit2 else 'FAIL'}")
     print(f"Test D {'PASSED' if pass_d else 'FAILED'}")
 
+    cv_rows = [
+        {'test': 'A_redundancy',   'passed': pass_a,        'copy_mean': copy_mean,   'dissim_mean': dissim_mean},
+        {'test': 'A_homogeneous',  'passed': None,           'n_neg': n_neg_homo,      'n_total': len(pair_homo)},
+        {'test': 'B_sii_corr',     'passed': pass_b,        'corr_sii': corr_sii,     'corr_q': corr_q, 'corr_dis': corr_dis},
+        {'test': 'C_monotonicity', 'passed': corr_c < -0.9, 'spearman_r': corr_c},
+        {'test': 'D_neg_control',  'passed': pass_d,        'max_abs_div': max_abs_d, 'mean_abs_div': mean_abs_d},
+    ]
+    pd.DataFrame(cv_rows).to_csv(EXP_DIRS[1] / 'construct_validity.csv', index=False)
+    print(f"Construct validity results saved to: {EXP_DIRS[1] / 'construct_validity.csv'}")
+
     return {
         'pair_a': pair_a, 'pair_b': pair_b, 'sii_b': sii_b,
         'q_stats': q_stats, 'disagree_stats': disagree_stats,
@@ -842,7 +839,6 @@ def run_dataset_seed(dataset_name, X, y, seed):
     # Stacking with logistic regression meta-learner
     try:
         stack_pred = stacking_predict(
-            r['X_tr'], r['y_tr'], r['X_test'], r['y_test'],
             r['val_preds'], r['y_val'], r['test_preds'], mn)
         stack_auc = roc_auc_score(r['y_test'], stack_pred)
         stack_brier = -brier_score_loss(r['y_test'], stack_pred)
@@ -874,7 +870,9 @@ def run_dataset_seed(dataset_name, X, y, seed):
     return results, lam_results, diag
 
 
-def run_all_experiments():
+def run_all_experiments(experiments=None):
+    if experiments is None:
+        experiments = {2, 3, 4}
     print("\n" + "=" * 60)
     print("EXPERIMENTS 2–4: Running across all datasets and seeds")
     print("=" * 60)
@@ -901,9 +899,20 @@ def run_all_experiments():
     df_lambda = pd.DataFrame(all_lambda)
     df_diag = pd.DataFrame(all_diag)
 
+    # Shared raw data always written to RESULTS_DIR for cross-experiment use
     df_results.to_csv(RESULTS_DIR / 'all_results.csv', index=False)
     df_lambda.to_csv(RESULTS_DIR / 'lambda_sensitivity.csv', index=False)
     df_diag.to_csv(RESULTS_DIR / 'diagnostics.csv', index=False)
+
+    ablation_methods = ['Equal', 'Interaction-Only', 'Individual-Only',
+                        'Coopetitive-0.5', 'Coopetitive-CV']
+    if 2 in experiments:
+        df_results[df_results['method'].isin(ablation_methods)].to_csv(
+            EXP_DIRS[2] / 'ablation_results.csv', index=False)
+    if 3 in experiments:
+        df_diag.to_csv(EXP_DIRS[3] / 'diagnostics.csv', index=False)
+    if 4 in experiments:
+        df_lambda.to_csv(EXP_DIRS[4] / 'lambda_sensitivity.csv', index=False)
 
     print(f"\nSaved {len(df_results)} results, {len(df_lambda)} lambda, "
           f"{len(df_diag)} diagnostics")
@@ -948,7 +957,9 @@ def holm_bonferroni(p_values):
     return np.minimum(adjusted, 1.0)
 
 
-def run_statistical_analysis(df_results, df_lambda):
+def run_statistical_analysis(df_results, df_lambda, experiments=None):
+    if experiments is None:
+        experiments = {2, 3, 4}
     print("\n" + "=" * 60)
     print("STATISTICAL ANALYSIS")
     print("=" * 60)
@@ -1007,7 +1018,8 @@ def run_statistical_analysis(df_results, df_lambda):
                              'raw_p': raw_p[idx], 'adj_p': adj_p[idx], 'sig': sig})
                 print(f"    {m1} vs {m2}: adj_p={adj_p[idx]:.4f} {sig}")
             posthoc_df = pd.DataFrame(rows)
-            posthoc_df.to_csv(RESULTS_DIR / 'posthoc_wilcoxon.csv', index=False)
+            if 3 in experiments:
+                posthoc_df.to_csv(EXP_DIRS[3] / 'posthoc_wilcoxon.csv', index=False)
 
     # ---- H4: λ sensitivity ----
     print("\n--- H4: λ Sensitivity ---")
@@ -1031,6 +1043,8 @@ def run_statistical_analysis(df_results, df_lambda):
                         'fixed_auc': fixed_auc, 'fixed_ratio': min(fixed_ratio, 1.0),
                         'robustness_ratio': robustness_ratio})
     df_h4 = pd.DataFrame(h4_rows)
+    if 4 in experiments:
+        df_h4.to_csv(EXP_DIRS[4] / 'lambda_h4_analysis.csv', index=False)
     print(f"  Mean optimal λ: {df_h4['opt_lambda'].mean():.2f} ± "
           f"{df_h4['opt_lambda'].std():.2f}")
     pct95_fixed = (df_h4['fixed_ratio'] >= 0.95).mean()
@@ -1062,142 +1076,148 @@ def run_statistical_analysis(df_results, df_lambda):
 # ============================================================
 # VISUALIZATIONS
 # ============================================================
-def generate_all_figures(exp1_results, df_results, df_lambda, stats_results):
+def generate_all_figures(exp1_results, df_results, df_lambda, stats_results, experiments=None):
+    if experiments is None:
+        experiments = {1, 2, 3, 4}
     plt.rcParams.update({'font.family': 'serif', 'font.size': 11,
                          'figure.dpi': 150, 'savefig.dpi': 150})
-
-    # ---- Figure 1: Dividend Heatmap ----
     print("\nGenerating figures...")
-    pair_b = exp1_results['pair_b']
-    model_names = ['LR', 'RF', 'SVM', 'XGB', 'KNN']
-    n = len(model_names)
-    matrix = np.zeros((n, n))
-    for i in range(n):
-        for j in range(i + 1, n):
-            key = tuple(sorted([model_names[i], model_names[j]]))
-            val = pair_b.get(key, 0.0)
-            matrix[i, j] = matrix[j, i] = val
 
-    fig, ax = plt.subplots(figsize=(8, 6.5))
-    vmax = max(abs(matrix.min()), abs(matrix.max()), 1e-6)
-    sns.heatmap(matrix, annot=True, fmt='.4f', cmap='RdBu',
-                xticklabels=model_names, yticklabels=model_names,
-                center=0, vmin=-vmax, vmax=vmax, ax=ax,
-                cbar_kws={'label': 'Pairwise Dividend m({i,j})'})
-    ax.set_title('Pairwise Harsanyi Dividends\n(Blue = Complementary, Red = Redundant)')
-    plt.tight_layout(); plt.savefig(FIGURES_DIR / 'fig1_dividend_heatmap.png'); plt.close()
+    # ---- Experiment 1 figures ----
+    if 1 in experiments and exp1_results is not None:
+        # Figure 1: Dividend Heatmap
+        pair_b = exp1_results['pair_b']
+        model_names = ['LR', 'RF', 'SVM', 'XGB', 'KNN']
+        n = len(model_names)
+        matrix = np.zeros((n, n))
+        for i in range(n):
+            for j in range(i + 1, n):
+                key = tuple(sorted([model_names[i], model_names[j]]))
+                matrix[i, j] = matrix[j, i] = pair_b.get(key, 0.0)
+        fig, ax = plt.subplots(figsize=(8, 6.5))
+        vmax = max(abs(matrix.min()), abs(matrix.max()), 1e-6)
+        sns.heatmap(matrix, annot=True, fmt='.4f', cmap='RdBu',
+                    xticklabels=model_names, yticklabels=model_names,
+                    center=0, vmin=-vmax, vmax=vmax, ax=ax,
+                    cbar_kws={'label': 'Pairwise Dividend m({i,j})'})
+        ax.set_title('Pairwise Harsanyi Dividends\n(Blue = Complementary, Red = Redundant)')
+        plt.tight_layout(); plt.savefig(EXP_DIRS[1] / 'fig1_dividend_heatmap.png'); plt.close()
 
-    # ---- Figure 2: Ablation Chart ----
-    ablation_methods = ['Equal', 'Interaction-Only', 'Individual-Only',
-                        'Coopetitive-0.5', 'Coopetitive-CV']
-    df_abl = df_results[df_results['method'].isin(ablation_methods)]
-    df_abl_avg = df_abl.groupby(['dataset', 'method'])['auc_roc'].agg(
-        ['mean', 'std']).reset_index()
-    fig, ax = plt.subplots(figsize=(14, 7))
-    ds_list = sorted(df_abl_avg['dataset'].unique())
-    x = np.arange(len(ds_list)); w = 0.15
-    colors = ['#95a5a6', '#e67e22', '#3498db', '#2ecc71', '#e74c3c']
-    for i, method in enumerate(ablation_methods):
-        df_m = df_abl_avg[df_abl_avg['method'] == method].set_index('dataset')
-        means = [df_m.loc[d, 'mean'] if d in df_m.index else 0 for d in ds_list]
-        stds = [df_m.loc[d, 'std'] if d in df_m.index else 0 for d in ds_list]
-        ax.bar(x + i * w, means, w, yerr=stds, label=method,
-               color=colors[i], capsize=2, edgecolor='white', linewidth=0.5)
-    ax.set_xlabel('Dataset'); ax.set_ylabel('AUC-ROC')
-    ax.set_title('Ablation Study: AUC-ROC by Variant and Dataset')
-    ax.set_xticks(x + w * 2)
-    ax.set_xticklabels(ds_list, rotation=45, ha='right', fontsize=8)
-    ax.legend(fontsize=9, loc='lower right')
-    ax.set_ylim(bottom=max(0.4, ax.get_ylim()[0]))
-    plt.tight_layout(); plt.savefig(FIGURES_DIR / 'fig2_ablation_chart.png'); plt.close()
+        # Figure 5: Test A Heatmap
+        pair_a = exp1_results['pair_a']
+        names_a = ['RF', 'RF_copy1', 'RF_copy2', 'LR', 'SVM']
+        n_a = len(names_a)
+        ma = np.zeros((n_a, n_a))
+        for i in range(n_a):
+            for j in range(i + 1, n_a):
+                key = tuple(sorted([names_a[i], names_a[j]]))
+                ma[i, j] = ma[j, i] = pair_a.get(key, 0.0)
+        fig, ax = plt.subplots(figsize=(8, 6.5))
+        vm = max(abs(ma.min()), abs(ma.max()), 1e-6)
+        sns.heatmap(ma, annot=True, fmt='.4f', cmap='RdBu', xticklabels=names_a,
+                    yticklabels=names_a, center=0, vmin=-vm, vmax=vm, ax=ax)
+        ax.set_title('Test A: Controlled Redundancy')
+        plt.tight_layout(); plt.savefig(EXP_DIRS[1] / 'fig5_test_a_heatmap.png'); plt.close()
 
-    # ---- Figure 3: Critical Difference Diagram ----
-    bench_methods = ['Equal', 'Perf-Weighted', 'Shapley', 'Stacking',
-                     'Best-Single', 'Coopetitive-CV']
-    df_bench = df_results[df_results['method'].isin(bench_methods)]
-    df_bench_avg = df_bench.groupby(['dataset', 'method'])['auc_roc'].mean().reset_index()
-    pivot = df_bench_avg.pivot(index='dataset', columns='method', values='auc_roc').dropna()
-    avg_ranks = pivot.rank(axis=1, ascending=False).mean().sort_values()
-    fig, ax = plt.subplots(figsize=(10, 4))
-    y_pos = np.arange(len(avg_ranks))
-    clr = ['#2ecc71' if 'Coop' in m else '#3498db' for m in avg_ranks.index]
-    ax.barh(y_pos, avg_ranks.values, color=clr, edgecolor='white', height=0.6)
-    ax.set_yticks(y_pos); ax.set_yticklabels(avg_ranks.index, fontsize=11)
-    ax.set_xlabel('Average Rank (lower is better)')
-    ax.set_title('Benchmark: Average Ranks Across 15 Datasets')
-    ax.invert_yaxis()
-    for i, (m, r) in enumerate(avg_ranks.items()):
-        ax.text(r + 0.05, i, f'{r:.2f}', va='center', fontsize=10)
-    plt.tight_layout(); plt.savefig(FIGURES_DIR / 'fig3_critical_difference.png'); plt.close()
+        # Figure 6: Monotonicity
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.plot(exp1_results['alphas'], exp1_results['blend_dividends'],
+                'o-', color='#e74c3c', linewidth=2, markersize=6)
+        ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
+        ax.set_xlabel('α'); ax.set_ylabel('m({RF, M_α})')
+        ax.set_title(f'Test C: Monotonicity (Spearman r = {exp1_results["corr_c"]:.4f})')
+        plt.tight_layout(); plt.savefig(EXP_DIRS[1] / 'fig6_test_c_monotonicity.png'); plt.close()
 
-    # ---- Figure 4: λ Sensitivity ----
-    df_lam_avg = df_lambda.groupby(['dataset', 'lambda'])['auc_roc'].mean().reset_index()
-    fig, ax = plt.subplots(figsize=(10, 6))
-    cmap = plt.cm.tab20
-    ds_all = sorted(df_lam_avg['dataset'].unique())
-    for i, ds in enumerate(ds_all):
-        d = df_lam_avg[df_lam_avg['dataset'] == ds]
-        ax.plot(d['lambda'], d['auc_roc'], color=cmap(i / len(ds_all)),
-                alpha=0.7, linewidth=1.5, label=ds)
-    ax.axvline(x=0.5, color='red', linestyle='--', alpha=0.5, label='λ=0.5')
-    ax.set_xlabel('λ'); ax.set_ylabel('AUC-ROC')
-    ax.set_title('λ Sensitivity Across Datasets')
-    ax.legend(fontsize=7, ncol=3, loc='lower right')
-    plt.tight_layout(); plt.savefig(FIGURES_DIR / 'fig4_lambda_sensitivity.png'); plt.close()
+    # ---- Experiment 2 figures ----
+    if 2 in experiments and df_results is not None:
+        ablation_methods = ['Equal', 'Interaction-Only', 'Individual-Only',
+                            'Coopetitive-0.5', 'Coopetitive-CV']
+        df_abl = df_results[df_results['method'].isin(ablation_methods)]
+        df_abl_avg = df_abl.groupby(['dataset', 'method'])['auc_roc'].agg(
+            ['mean', 'std']).reset_index()
+        fig, ax = plt.subplots(figsize=(14, 7))
+        ds_list = sorted(df_abl_avg['dataset'].unique())
+        x = np.arange(len(ds_list)); w = 0.15
+        colors = ['#95a5a6', '#e67e22', '#3498db', '#2ecc71', '#e74c3c']
+        for i, method in enumerate(ablation_methods):
+            df_m = df_abl_avg[df_abl_avg['method'] == method].set_index('dataset')
+            means = [df_m.loc[d, 'mean'] if d in df_m.index else 0 for d in ds_list]
+            stds  = [df_m.loc[d, 'std']  if d in df_m.index else 0 for d in ds_list]
+            ax.bar(x + i * w, means, w, yerr=stds, label=method,
+                   color=colors[i], capsize=2, edgecolor='white', linewidth=0.5)
+        ax.set_xlabel('Dataset'); ax.set_ylabel('AUC-ROC')
+        ax.set_title('Ablation Study: AUC-ROC by Variant and Dataset')
+        ax.set_xticks(x + w * 2)
+        ax.set_xticklabels(ds_list, rotation=45, ha='right', fontsize=8)
+        ax.legend(fontsize=9, loc='lower right')
+        ax.set_ylim(bottom=max(0.4, ax.get_ylim()[0]))
+        plt.tight_layout(); plt.savefig(EXP_DIRS[2] / 'fig2_ablation_chart.png'); plt.close()
 
-    # ---- Figure 5: Test A Heatmap ----
-    pair_a = exp1_results['pair_a']
-    names_a = ['RF', 'RF_copy1', 'RF_copy2', 'LR', 'SVM']
-    n_a = len(names_a)
-    ma = np.zeros((n_a, n_a))
-    for i in range(n_a):
-        for j in range(i + 1, n_a):
-            key = tuple(sorted([names_a[i], names_a[j]]))
-            val = pair_a.get(key, 0.0)
-            ma[i, j] = ma[j, i] = val
-    fig, ax = plt.subplots(figsize=(8, 6.5))
-    vm = max(abs(ma.min()), abs(ma.max()), 1e-6)
-    sns.heatmap(ma, annot=True, fmt='.4f', cmap='RdBu', xticklabels=names_a,
-                yticklabels=names_a, center=0, vmin=-vm, vmax=vm, ax=ax)
-    ax.set_title('Test A: Controlled Redundancy')
-    plt.tight_layout(); plt.savefig(FIGURES_DIR / 'fig5_test_a_heatmap.png'); plt.close()
+    # ---- Experiment 3 figures ----
+    if 3 in experiments and df_results is not None:
+        bench_methods = ['Equal', 'Perf-Weighted', 'Shapley', 'Stacking',
+                         'Best-Single', 'Coopetitive-CV']
+        df_bench = df_results[df_results['method'].isin(bench_methods)]
+        df_bench_avg = df_bench.groupby(['dataset', 'method'])['auc_roc'].mean().reset_index()
+        pivot = df_bench_avg.pivot(index='dataset', columns='method', values='auc_roc').dropna()
+        avg_ranks = pivot.rank(axis=1, ascending=False).mean().sort_values()
+        fig, ax = plt.subplots(figsize=(10, 4))
+        y_pos = np.arange(len(avg_ranks))
+        clr = ['#2ecc71' if 'Coop' in m else '#3498db' for m in avg_ranks.index]
+        ax.barh(y_pos, avg_ranks.values, color=clr, edgecolor='white', height=0.6)
+        ax.set_yticks(y_pos); ax.set_yticklabels(avg_ranks.index, fontsize=11)
+        ax.set_xlabel('Average Rank (lower is better)')
+        ax.set_title(f'Benchmark: Average Ranks Across {len(pivot)} Datasets')
+        ax.invert_yaxis()
+        for i, (m, r) in enumerate(avg_ranks.items()):
+            ax.text(r + 0.05, i, f'{r:.2f}', va='center', fontsize=10)
+        plt.tight_layout(); plt.savefig(EXP_DIRS[3] / 'fig3_critical_difference.png'); plt.close()
 
-    # ---- Figure 6: Monotonicity ----
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(exp1_results['alphas'], exp1_results['blend_dividends'],
-            'o-', color='#e74c3c', linewidth=2, markersize=6)
-    ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
-    ax.set_xlabel('α'); ax.set_ylabel('m({RF, M_α})')
-    ax.set_title(f'Test C: Monotonicity (Spearman r = {exp1_results["corr_c"]:.4f})')
-    plt.tight_layout(); plt.savefig(FIGURES_DIR / 'fig6_test_c_monotonicity.png'); plt.close()
+        # Figure 7: Diagnostics
+        df_diag = pd.read_csv(RESULTS_DIR / 'diagnostics.csv')
+        df_d = df_diag.groupby('dataset').agg(
+            {'coverage': 'mean', 'mono_rate': 'mean', 'rank_stability': 'mean'}).reset_index()
+        fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+        axes[0].barh(df_d['dataset'], df_d['coverage'], color='#3498db')
+        axes[0].axvline(x=0.8, color='red', linestyle='--', label='80%')
+        axes[0].set_xlabel('Coverage'); axes[0].set_title('Decomposition Coverage'); axes[0].legend()
+        axes[1].barh(df_d['dataset'], df_d['mono_rate'], color='#e67e22')
+        axes[1].axvline(x=0.4, color='red', linestyle='--', label='40%')
+        axes[1].set_xlabel('Violation Rate'); axes[1].set_title('Monotonicity Violations'); axes[1].legend()
+        axes[2].barh(df_d['dataset'], df_d['rank_stability'], color='#2ecc71')
+        axes[2].axvline(x=0.9, color='red', linestyle='--', label='0.90')
+        axes[2].set_xlabel('Spearman r'); axes[2].set_title('Rank Stability'); axes[2].legend()
+        plt.tight_layout(); plt.savefig(EXP_DIRS[3] / 'fig7_diagnostics.png'); plt.close()
 
-    # ---- Figure 7: Diagnostics ----
-    df_diag = pd.read_csv(RESULTS_DIR / 'diagnostics.csv')
-    df_d = df_diag.groupby('dataset').agg(
-        {'coverage': 'mean', 'mono_rate': 'mean', 'rank_stability': 'mean'}).reset_index()
-    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-    axes[0].barh(df_d['dataset'], df_d['coverage'], color='#3498db')
-    axes[0].axvline(x=0.8, color='red', linestyle='--', label='80%')
-    axes[0].set_xlabel('Coverage'); axes[0].set_title('Decomposition Coverage'); axes[0].legend()
-    axes[1].barh(df_d['dataset'], df_d['mono_rate'], color='#e67e22')
-    axes[1].axvline(x=0.4, color='red', linestyle='--', label='40%')
-    axes[1].set_xlabel('Violation Rate'); axes[1].set_title('Monotonicity Violations'); axes[1].legend()
-    axes[2].barh(df_d['dataset'], df_d['rank_stability'], color='#2ecc71')
-    axes[2].axvline(x=0.9, color='red', linestyle='--', label='0.90')
-    axes[2].set_xlabel('Spearman r'); axes[2].set_title('Rank Stability'); axes[2].legend()
-    plt.tight_layout(); plt.savefig(FIGURES_DIR / 'fig7_diagnostics.png'); plt.close()
+    # ---- Experiment 4 figures ----
+    if 4 in experiments and df_lambda is not None:
+        df_lam_avg = df_lambda.groupby(['dataset', 'lambda'])['auc_roc'].mean().reset_index()
+        ds_all = sorted(df_lam_avg['dataset'].unique())
+        cmap = plt.cm.tab20
 
-    # ---- Figure 8: Interaction Plot ----
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for ds in ds_all[:6]:
-        d = df_lam_avg[df_lam_avg['dataset'] == ds]
-        ax.plot(d['lambda'], d['auc_roc'], 'o-', markersize=3, linewidth=1.5, label=ds)
-    ax.set_xlabel('λ'); ax.set_ylabel('Mean AUC-ROC')
-    ax.set_title('Factorial Interaction Plot: λ × Dataset')
-    ax.legend(fontsize=9)
-    plt.tight_layout(); plt.savefig(FIGURES_DIR / 'fig8_interaction_plot.png'); plt.close()
+        fig, ax = plt.subplots(figsize=(10, 6))
+        for i, ds in enumerate(ds_all):
+            d = df_lam_avg[df_lam_avg['dataset'] == ds]
+            ax.plot(d['lambda'], d['auc_roc'], color=cmap(i / len(ds_all)),
+                    alpha=0.7, linewidth=1.5, label=ds)
+        ax.axvline(x=0.5, color='red', linestyle='--', alpha=0.5, label='λ=0.5')
+        ax.set_xlabel('λ'); ax.set_ylabel('AUC-ROC')
+        ax.set_title('λ Sensitivity Across Datasets')
+        ax.legend(fontsize=7, ncol=3, loc='lower right')
+        plt.tight_layout(); plt.savefig(EXP_DIRS[4] / 'fig4_lambda_sensitivity.png'); plt.close()
 
-    print(f"All figures saved to {FIGURES_DIR}/")
+        # Figure 8: Interaction Plot
+        fig, ax = plt.subplots(figsize=(10, 6))
+        for ds in ds_all[:6]:
+            d = df_lam_avg[df_lam_avg['dataset'] == ds]
+            ax.plot(d['lambda'], d['auc_roc'], 'o-', markersize=3, linewidth=1.5, label=ds)
+        ax.set_xlabel('λ'); ax.set_ylabel('Mean AUC-ROC')
+        ax.set_title('Factorial Interaction Plot: λ × Dataset')
+        ax.legend(fontsize=9)
+        plt.tight_layout(); plt.savefig(EXP_DIRS[4] / 'fig8_interaction_plot.png'); plt.close()
+
+    saved = [str(EXP_DIRS[n]) for n in sorted(experiments)]
+    print(f"Figures saved under: {', '.join(saved)}")
 
 
 # ============================================================
@@ -1334,13 +1354,48 @@ def generate_latex_summary(exp1, df_results, st):
 # ============================================================
 # MAIN
 # ============================================================
+def parse_args():
+    p = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument(
+        '--experiments', type=int, nargs='+', default=[1, 2, 3, 4],
+        choices=[1, 2, 3, 4], metavar='N',
+        help='Which experiments to run (default: 1 2 3 4). '
+             'E.g. --experiments 1 3',
+    )
+    return p.parse_args()
+
+
 if __name__ == '__main__':
+    args = parse_args()
+    experiments = set(args.experiments)
+
+    for n in experiments:
+        EXP_DIRS[n].mkdir(parents=True, exist_ok=True)
+
+    print(f"Running experiments: {sorted(experiments)}")
+
     t_start = time.time()
-    exp1_results = run_experiment_1()
-    df_results, df_lambda, df_diag = run_all_experiments()
-    stats_results = run_statistical_analysis(df_results, df_lambda)
-    generate_all_figures(exp1_results, df_results, df_lambda, stats_results)
-    generate_summary_report(exp1_results, df_results, df_lambda, stats_results)
-    generate_latex_summary(exp1_results, df_results, stats_results)
+    exp1_results   = None
+    df_results     = None
+    df_lambda      = None
+    df_diag        = None
+    stats_results  = None
+
+    if 1 in experiments:
+        exp1_results = run_experiment_1()
+
+    if experiments & {2, 3, 4}:
+        df_results, df_lambda, df_diag = run_all_experiments(experiments)
+        stats_results = run_statistical_analysis(df_results, df_lambda, experiments)
+
+    generate_all_figures(exp1_results, df_results, df_lambda, stats_results, experiments)
+
+    if exp1_results is not None and stats_results is not None:
+        generate_summary_report(exp1_results, df_results, df_lambda, stats_results)
+        generate_latex_summary(exp1_results, df_results, stats_results)
+
     t_total = time.time() - t_start
     print(f"\n{'='*60}\nTOTAL RUNTIME: {t_total/60:.1f} minutes\n{'='*60}")

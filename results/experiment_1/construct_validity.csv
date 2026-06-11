@@ -1,0 +1,6 @@
+test          , passed, copy_mean         , dissim_mean         , n_neg, n_total, corr_sii          , corr_q            , corr_dis            , spearman_r        , max_abs_div        , mean_abs_div
+A_redundancy  , False , -0.496141975308642, -0.49777966742252444,      ,        ,                   ,                   ,                     ,                   ,                    ,  
+A_homogeneous ,       ,                   ,                     ,  10.0,    10.0,                   ,                   ,                     ,                   ,                    ,  
+B_sii_corr    , True  ,                   ,                     ,      ,        , 0.7622092916488802, 0.5171176073616643, -0.32923288073842266,                   ,                    ,  
+C_monotonicity, False ,                   ,                     ,      ,        ,                   ,                   ,                     , 0.7742675438094841,                    ,  
+D_neg_control , False ,                   ,                     ,      ,        ,                   ,                   ,                     ,                   , 0.05324074074074081, 0.021064814814814814
